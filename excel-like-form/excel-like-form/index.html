@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel-like Form</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Excel-like Form</h1>
+        <div>
+            <input type="text" id="colName" placeholder="Column Name">
+            <select id="colType">
+                <option value="text">Text</option>
+                <option value="value">Value</option>
+            </select>
+            <button id="addColumn">Add Column</button>
+        </div>
+        <table id="dataTable">
+            <thead>
+                <tr></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button id="addRow">Add Row</button>
+        <div>
+            <button id="exportData">Export Data</button>
+            <button id="importData">Import Data</button>
+            <input type="file" id="fileInput" style="display: none;">
+        </div>
+        <div>
+            <h2>Sum Result: <span id="sumResult">0.00</span></h2>
+            <h2>Final Result: <span id="finalResult">0.00</span></h2>
+            <button id="calculateFinalResult">Calculate Final Result</button>
+            <button id="clearAll">Clear All</button>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Expenses</h1>
+        <div>
+            <input type="text" id="colNameExpenses" placeholder="Column Name">
+            <select id="colTypeExpenses">
+                <option value="text">Text</option>
+                <option value="value">Value</option>
+            </select>
+            <button id="addColumnExpenses">Add Column</button>
+        </div>
+        <table id="dataTableExpenses">
+            <thead>
+                <tr></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button id="addRowExpenses">Add Row</button>
+        <div>
+            <h2>Sum Result Expenses: <span id="sumResultExpenses">0.00</span></h2>
+        </div>
+    </div>
+    <script src="scripts/app.js"></script>
+</body>
+</html>

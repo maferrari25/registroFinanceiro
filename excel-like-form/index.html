@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário Estilo Excel</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <h1>Registro Financeiro</h1>
+    <div class="container">
+            <h3>Receitas</h3>
+        <button id="addColumn">Adicionar Coluna</button>
+
+        <select id="colType">
+            <option value="text">Texto</option>
+            <option value="value">Valor</option>
+            <option value="date">Data</option>
+        </select>
+
+        <input type="text" id="colName" placeholder="Digite o nome da coluna">
+
+        <button id="addRow">Adicionar Linha</button>
+        <!-- The "Excluir Seleção" button will be dynamically added here -->
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <!-- Cabeçalho vazio inicialmente -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Corpo vazio inicialmente -->
+            </tbody>
+        </table>
+        <h3>Resultado: <span id="sumResult">0</span></h3>
+    </div>
+    <br>
+    <div class="container">
+        <h3>Despesas</h3>
+        <button id="addColumnExpenses">Adicionar Coluna</button>
+
+        <select id="colTypeExpenses">
+            <option value="text">Texto</option>
+            <option value="value">Valor</option>
+            <option value="date">Data</option>
+        </select>
+
+        <input type="text" id="colNameExpenses" placeholder="Digite o nome da coluna">
+
+        <button id="addRowExpenses">Adicionar Linha</button>
+        <!-- The "Excluir Seleção" button will be dynamically added here -->
+        <table id="dataTableExpenses">
+            <thead>
+                <tr>
+                    <!-- Cabeçalho vazio inicialmente -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Corpo vazio inicialmente -->
+            </tbody>
+        </table>
+        <h3>Resultado: <span id="sumResultExpenses">0</span></h3>
+    </div>
+    <br>
+    <div class="container">
+        <h3>Resultado: <span id="finalResult">0</span></h3>
+        <button id="calculateFinalResult">Calcular Resultado Final</button>
+        <button id="clearAll">Limpar</button>
+        <button id="exportData">Exportar Dados</button>
+        <button id="importData">Importar Dados</button>
+        <input type="file" id="fileInput" style="display: none;">
+    </div>
+    
+    <script src="scripts/app.js"></script>
+</body>
+
+</html>

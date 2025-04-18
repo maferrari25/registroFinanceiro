@@ -66,6 +66,22 @@
     </div>
     <br>
     <div class="container">
+        <h3>Poupança</h3>
+        <input type="number" id="savingsValue" placeholder="Valor guardado este mês" step="0.01" min="0">
+        <h3>Resultado: <span id="sumResultSavings">0</span></h3>
+        <h4>Total acumulado: <span id="sumResultSavingsTotal">0</span></h4>
+        <hr>
+        <label for="emergencyValue"><h3>Reserva de Emergência</h3></label>
+        <input type="number" id="emergencyValue" placeholder="Valor reserva de emergência este mês" step="0.01" min="0">
+        <h3>Resultado: <span id="sumResultEmergency">0</span></h3>
+        <h4>Total acumulado: <span id="sumResultEmergencyTotal">0</span></h4>
+        <hr>
+        <label for="proximoMes"><h3>Próximo Mês</h3></label>
+        <input type="number" id="nextMonthValue" placeholder="Valor para próximo mês" step="0.01" min="0">
+        <button id="registerNextMonth">Registrar no próximo mês</button>
+    </div>
+    <br>
+    <div class="container">
         <h3>Resultado: <span id="finalResult">0</span></h3>
         <button id="calculateFinalResult">Calcular Resultado Final</button>
         <button id="clearAll">Limpar</button>
@@ -73,6 +89,7 @@
         <button id="importData">Importar Dados</button>
         <input type="file" id="fileInput" style="display: none;">
     </div>
+    
     
     <script src="scripts/app.js"></script>
 </body>

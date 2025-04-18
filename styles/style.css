@@ -63,6 +63,21 @@ button#deleteSelectionExpenses:hover {
     background-color: #c9302c;
 }
 
+.copy-col-next-month {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+.copy-col-next-month:hover {
+    background-color: #0056b3;
+}
+
 .container {
     max-width: 80%;
     margin: auto;
@@ -92,6 +107,21 @@ tr.selected {
 
 th.selected, td.selected {
     background-color: #f2dede;
+}
+
+.move-row-up,
+.move-row-down {
+    background-color: #eee;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    margin: 0 1px;
+}
+.move-row-up:hover,
+.move-row-down:hover {
+    background-color: #b3d7ff;
 }
 
 

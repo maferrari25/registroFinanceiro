@@ -53,6 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return Number(value).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
     }
 
+    // Função utilitária para converter texto de moeda para número
+    function parseCurrencyText(text) {
+        if (!text) return 0;
+        // Remove tudo que não for número, vírgula, ponto ou sinal
+        let cleaned = text.replace(/[^\d\.,-]/g, '').replace(',', '.');
+        let num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+    }
+
     // Receitas
     const loadTableData = () => {
         const savedData = JSON.parse(localStorage.getItem(getStorageKeyReceitas())) || { headers: [], rows: [] };
@@ -113,13 +122,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const saveTableData = () => {
         const headers = Array.from(dataTable.querySelector('thead tr').children)
-            .slice(1) // ignora coluna dos botões
+            .slice(1)
             .map(th => ({
                 name: th.textContent,
                 type: th.dataset.type || 'text'
             }));
         const rows = Array.from(dataTable.querySelector('tbody').children).map(tr =>
-            Array.from(tr.children).slice(1).map(td => td.textContent)
+            Array.from(tr.children).slice(1).map((td, idx) => {
+                // Se for coluna de valor, salva o valor bruto
+                const header = headers[idx];
+                if (header && header.type === 'value' && td.dataset.rawValue !== undefined) {
+                    console.log(header);
+                    return td.dataset.rawValue;
+                }
+                return td.textContent;
+            })
         );
         localStorage.setItem(getStorageKeyReceitas(), JSON.stringify({ headers, rows }));
         updateSumResult();
@@ -390,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
             valueColumnIndexes.forEach(index => {
                 const cell = row.children[index];
                 if (cell) {
-                    // Usa valor bruto se disponível
+                    // Sempre usa valor bruto se disponível
                     const value = parseFloat(cell.dataset.rawValue !== undefined ? cell.dataset.rawValue : cell.textContent.replace(/[^\d\.,-]/g, '').replace(',', '.')) || 0;
                     sum += value;
                 }
@@ -470,7 +487,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 type: th.dataset.type || 'text'
             }));
         const rows = Array.from(dataTableExpenses.querySelector('tbody').children).map(tr =>
-            Array.from(tr.children).slice(1).map(td => td.textContent)
+            Array.from(tr.children).slice(1).map((td, idx) => {
+                const header = headers[idx];
+                if (header && header.type === 'value' && td.dataset.rawValue !== undefined) {
+                    return td.dataset.rawValue;
+                }
+                return td.textContent;
+            })
         );
         localStorage.setItem(getStorageKeyDespesas(), JSON.stringify({ headers, rows }));
         updateSumResultExpenses();
@@ -632,35 +655,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Calcular Resultado Final (Receitas - Despesas)
     document.getElementById('calculateFinalResult').addEventListener('click', () => {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent) || 0;
-        const poupanca = parseFloat(document.getElementById('sumResultSavings').textContent) || 0;
+        const receitas = parseCurrencyText(document.getElementById('sumResult').textContent);
+        const despesas = parseCurrencyText(document.getElementById('sumResultExpenses').textContent);
+        const poupanca = parseCurrencyText(document.getElementById('sumResultSavings').textContent);
         const resultadoFinal = receitas - (despesas - poupanca);
         document.getElementById('finalResult').textContent = resultadoFinal.toFixed(2);
     });
 
     // Calcular Resultado Final (Receitas - Despesas - Poupança do mês atual)
     document.getElementById('calculateFinalResult').addEventListener('click', () => {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent) || 0;
-        const poupancaMesAtual = parseFloat(document.getElementById('sumResultSavings').textContent) || 0;
+        const receitas = parseCurrencyText(document.getElementById('sumResult').textContent);
+        const despesas = parseCurrencyText(document.getElementById('sumResultExpenses').textContent);
+        const poupancaMesAtual = parseCurrencyText(document.getElementById('sumResultSavings').textContent);
         const resultadoFinal = receitas - despesas - poupancaMesAtual;
         document.getElementById('finalResult').textContent = resultadoFinal.toFixed(2);
     });
 
     // Calcular Resultado Final (Receitas - Despesas - Poupança do mês atual - Reserva de Emergência do mês atual)
     document.getElementById('calculateFinalResult').addEventListener('click', () => {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent) || 0;
-        const poupancaMesAtual = parseFloat(document.getElementById('sumResultSavings').textContent) || 0;
-        const emergenciaMesAtual = parseFloat(document.getElementById('sumResultEmergency').textContent) || 0;
+        const receitas = parseCurrencyText(document.getElementById('sumResult').textContent);
+        const despesas = parseCurrencyText(document.getElementById('sumResultExpenses').textContent);
+        const poupancaMesAtual = parseCurrencyText(document.getElementById('sumResultSavings').textContent);
+        const emergenciaMesAtual = parseCurrencyText(document.getElementById('sumResultEmergency').textContent);
         const resultadoFinal = receitas - despesas - poupancaMesAtual - emergenciaMesAtual;
         document.getElementById('finalResult').textContent = resultadoFinal.toFixed(2);
     });
 
     // Limpar Tudo
     document.getElementById('clearAll').addEventListener('click', () => {
-        document.getElementById('finalResult').textContent = '0';
+        if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
+            localStorage.clear();
+            // Atualiza a interface após limpar
+            document.getElementById('finalResult').textContent = '0';
+            // Recarrega tabelas e campos
+            if (typeof loadAllMonthData === 'function') {
+                loadAllMonthData();
+            } else {
+                // fallback para funções individuais
+                loadTableData && loadTableData();
+                loadTableDataExpenses && loadTableDataExpenses();
+                loadSavingsValue && loadSavingsValue();
+                loadNextMonthValue && loadNextMonthValue();
+            }
+            // Limpa inputs
+            document.getElementById('savingsValue').value = '';
+            document.getElementById('emergencyValue').value = '';
+            document.getElementById('nextMonthValue').value = '';
+            document.getElementById('sumResult').textContent = '€0.00';
+            document.getElementById('sumResultExpenses').textContent = '€0.00';
+            document.getElementById('sumResultSavings').textContent = '€0.00';
+            document.getElementById('sumResultSavingsTotal').textContent = '€0.00';
+            document.getElementById('sumResultEmergency').textContent = '€0.00';
+            document.getElementById('sumResultEmergencyTotal').textContent = '€0.00';
+        }
     });
 
     // Exportar Dados (agora em formato Excel)
@@ -716,59 +763,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Importar Dados (agora aceita .xlsx exportado)
     document.getElementById('importData').addEventListener('click', () => {
-        document.getElementById('fileInput').accept = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-        document.getElementById('fileInput').click();
+        const fileInput = document.getElementById('fileInput');
+        fileInput.accept = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        fileInput.value = ''; // Limpa para permitir novo upload igual
+        fileInput.click();
     });
 
-    document.getElementById('fileInput').addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        // Verifica extensão
-        if (file.name.endsWith('.xlsx')) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-
-                    // Receitas
-                    const wsReceitas = workbook.Sheets['Receitas'];
-                    const receitasSheet = wsReceitas ? XLSX.utils.sheet_to_json(wsReceitas, { header: 1 }) : [];
-                    let receitas = { headers: [], rows: [] };
-                    if (receitasSheet.length > 0) {
-                        receitas.headers = receitasSheet[0].map(name => ({ name, type: name.toLowerCase().includes('valor') ? 'value' : 'text' }));
-                        receitas.rows = receitasSheet.slice(1);
-                    }
-
-                    // Despesas
-                    const wsDespesas = workbook.Sheets['Despesas'];
-                    const despesasSheet = wsDespesas ? XLSX.utils.sheet_to_json(wsDespesas, { header: 1 }) : [];
-                    let despesas = { headers: [], rows: [] };
-                    if (despesasSheet.length > 0) {
-                        despesas.headers = despesasSheet[0].map(name => ({ name, type: name.toLowerCase().includes('valor') ? 'value' : 'text' }));
-                        despesas.rows = despesasSheet.slice(1);
-                    }
-
-                    localStorage.setItem(getStorageKeyReceitas(), JSON.stringify(receitas));
-                    localStorage.setItem(getStorageKeyDespesas(), JSON.stringify(despesas));
-                    // Recarrega tabelas
-                    loadTableData();
-                    loadTableDataExpenses();
-                    document.getElementById('finalResult').textContent = '0';
-                } catch {
-                    alert('Erro ao importar arquivo Excel.');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            alert('Por favor, selecione um arquivo .xlsx exportado pelo sistema.');
-        }
-        // Limpa input para permitir novo upload igual
-        event.target.value = '';
-    });
-
-    // Importar Dados (agora aceita .xlsx exportado)
     document.getElementById('fileInput').addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -798,27 +798,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         while (i < aoa.length) {
                             const row = aoa[i];
                             if (row[0] === 'Receitas') {
-                                // Receitas: headers na próxima linha
                                 i++;
                                 receitas.headers = (aoa[i] || []).map(name => ({
                                     name,
                                     type: name && name.toLowerCase().includes('valor') ? 'value' : 'text'
                                 }));
                                 i++;
-                                // Linhas até linha vazia ou fim
                                 while (i < aoa.length && aoa[i].length && aoa[i][0] !== 'Despesas') {
                                     receitas.rows.push(aoa[i]);
                                     i++;
                                 }
                             } else if (row[0] === 'Despesas') {
-                                // Despesas: headers na próxima linha
                                 i++;
                                 despesas.headers = (aoa[i] || []).map(name => ({
                                     name,
                                     type: name && name.toLowerCase().includes('valor') ? 'value' : 'text'
                                 }));
                                 i++;
-                                // Linhas até linha vazia ou fim
                                 while (i < aoa.length && aoa[i].length && aoa[i][0] !== 'Poupança' && aoa[i][0] !== 'Reserva de Emergência') {
                                     despesas.rows.push(aoa[i]);
                                     i++;
@@ -843,12 +839,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
-                    // Recarrega dados do mês atual
-                    // ...existing code...
+                    // Após importar, recarrega dados do mês atual
+                    updateMonthLabel();
                     loadTableData();
                     loadTableDataExpenses();
                     loadSavingsValue();
-                    loadEmergencyValue();
+                    loadNextMonthValue && loadNextMonthValue();
+                    updateSumResultSavingsTotal();
                     document.getElementById('finalResult').textContent = '0';
                 } catch {
                     alert('Erro ao importar arquivo Excel.');
@@ -860,6 +857,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         event.target.value = '';
     });
+
+  
 
     // --- Seleção e exclusão para DESPESAS ---
     let selectedRowsExpenses = new Set();
@@ -1136,221 +1135,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Calcular Resultado Final (Receitas - Despesas - Poupança acumulada)
     document.getElementById('calculateFinalResult').addEventListener('click', () => {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent) || 0;
-        const poupancaTotal = parseFloat(sumResultSavingsTotal.textContent) || 0;
-        const resultadoFinal = receitas - despesas - poupancaTotal;
-        document.getElementById('finalResult').textContent = resultadoFinal.toFixed(2);
+        const receitas = parseCurrencyText(document.getElementById('sumResult').textContent);
+        const despesas = parseCurrencyText(document.getElementById('sumResultExpenses').textContent);
+        const poupancaTotal = parseCurrencyText(sumResultSavingsTotal.textContent);
+        const emergenciaMesAtual = parseCurrencyText(document.getElementById('sumResultEmergency').textContent);
+        const nextMonthVal = parseFloat(document.getElementById('nextMonthValue').value) || 0;
+        const resultadoFinal = receitas - despesas - poupancaTotal - emergenciaMesAtual - nextMonthVal;
+        document.getElementById('finalResult').textContent = formatCurrency(resultadoFinal);
     });
 
-    // Calcular Resultado Final (Receitas - Despesas - Poupança do mês atual)
-    document.getElementById('calculateFinalResult').addEventListener('click', () => {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent) || 0;
-        const poupancaMesAtual = parseFloat(document.getElementById('sumResultSavings').textContent) || 0;
-        const resultadoFinal = receitas - despesas - poupancaMesAtual;
-        document.getElementById('finalResult').textContent = resultadoFinal.toFixed(2);
+    // Remova os outros listeners duplicados para o botão 'calculateFinalResult'
+    // ...existing code...
+
+    // Garanta que updateSumResultSavingsTotal é chamada sempre que savingsInput muda
+    savingsInput.addEventListener('input', () => {
+        saveSavingsValue();
+        updateSumResultSavingsTotal();
     });
 
-    // Calcular Resultado Final (Receitas - Despesas - Poupança do mês atual - Reserva de Emergência do mês atual)
-    document.getElementById('calculateFinalResult').addEventListener('click', () => {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent) || 0;
-        const poupancaMesAtual = parseFloat(document.getElementById('sumResultSavings').textContent) || 0;
-        const emergenciaMesAtual = parseFloat(document.getElementById('sumResultEmergency').textContent) || 0;
-        const resultadoFinal = receitas - despesas - poupancaMesAtual - emergenciaMesAtual;
-        document.getElementById('finalResult').textContent = resultadoFinal.toFixed(2);
-    });
+    // Garanta que updateSumResultSavingsTotal é chamada ao trocar de mês
+    function loadSavingsValue() {
+        const value = parseFloat(localStorage.getItem(getStorageKeySavings())) || 0;
+        savingsInput.value = value !== 0 ? value : '';
+        sumResultSavings.textContent = formatCurrency(value);
+        updateSumResultSavingsTotal();
+        loadEmergencyValue(); // agora a função está definida acima
+    }
 
-    // Limpar Tudo
-    document.getElementById('clearAll').addEventListener('click', () => {
-        document.getElementById('finalResult').textContent = '0';
-    });
+    // ...existing code...
 
-    // Exportar Dados (agora em formato Excel)
-    document.getElementById('exportData').addEventListener('click', () => {
-        const wb = XLSX.utils.book_new();
-
-        // Para cada mês do ano atual (ou todos os anos, se desejar)
-        // Aqui, exporta apenas o ano atual
-        for (let year = currentYear; year <= currentYear; year++) {
-            for (let month = 1; month <= 12; month++) {
-                // Receitas
-                const receitasData = JSON.parse(localStorage.getItem(`tableData_${year}_${month}`)) || { headers: [], rows: [] };
-                const receitasSheet = [
-                    receitasData.headers.map(h => h.name),
-                    ...receitasData.rows
-                ];
-
-                // Despesas
-                const despesasData = JSON.parse(localStorage.getItem(`tableDataExpenses_${year}_${month}`)) || { headers: [], rows: [] };
-                const despesasSheet = [
-                    despesasData.headers.map(h => h.name),
-                    ...despesasData.rows
-                ];
-
-                // Poupança e Emergência
-                const savingsValue = parseFloat(localStorage.getItem(`savingsValue_${year}_${month}`)) || 0;
-                const emergencyValue = parseFloat(localStorage.getItem(`emergencyValue_${year}_${month}`)) || 0;
-
-                // Monta sheet: Receitas, linha em branco, Despesas, linha em branco, Poupança/Emergência
-                let sheetData = [];
-                if (receitasSheet.length > 1) {
-                    sheetData.push(['Receitas']);
-                    sheetData = sheetData.concat(receitasSheet);
-                    sheetData.push([]);
-                }
-                if (despesasSheet.length > 1) {
-                    sheetData.push(['Despesas']);
-                    sheetData = sheetData.concat(despesasSheet);
-                    sheetData.push([]);
-                }
-                sheetData.push(['Poupança', savingsValue]);
-                sheetData.push(['Reserva de Emergência', emergencyValue]);
-
-                // Nome da aba: MM-YYYY
-                const sheetName = `${String(month).padStart(2, '0')}-${year}`;
-                const ws = XLSX.utils.aoa_to_sheet(sheetData);
-                XLSX.utils.book_append_sheet(wb, ws, sheetName);
-            }
-        }
-
-        XLSX.writeFile(wb, `dados-financeiros-${currentYear}.xlsx`);
-    });
-
-    // Importar Dados (agora aceita .xlsx exportado)
+    // Garanta que updateSumResultSavingsTotal é chamada ao importar dados
     document.getElementById('fileInput').addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
+        // ...existing code...
         if (file.name.endsWith('.xlsx')) {
-            const reader = new FileReader();
+            // ...existing code...
             reader.onload = (e) => {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-
-                    // Para cada sheet (mês)
-                    workbook.SheetNames.forEach(sheetName => {
-                        // Esperado: sheetName = MM-YYYY
-                        const [monthStr, yearStr] = sheetName.split('-');
-                        const month = parseInt(monthStr, 10);
-                        const year = parseInt(yearStr, 10);
-                        const aoa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-
-                        // Procura blocos Receitas, Despesas, Poupança, Emergência
-                        let receitas = { headers: [], rows: [] };
-                        let despesas = { headers: [], rows: [] };
-                        let savingsValue = 0;
-                        let emergencyValue = 0;
-
-                        let i = 0;
-                        while (i < aoa.length) {
-                            const row = aoa[i];
-                            if (row[0] === 'Receitas') {
-                                // Receitas: headers na próxima linha
-                                i++;
-                                receitas.headers = (aoa[i] || []).map(name => ({
-                                    name,
-                                    type: name && name.toLowerCase().includes('valor') ? 'value' : 'text'
-                                }));
-                                i++;
-                                // Linhas até linha vazia ou fim
-                                while (i < aoa.length && aoa[i].length && aoa[i][0] !== 'Despesas') {
-                                    receitas.rows.push(aoa[i]);
-                                    i++;
-                                }
-                            } else if (row[0] === 'Despesas') {
-                                // Despesas: headers na próxima linha
-                                i++;
-                                despesas.headers = (aoa[i] || []).map(name => ({
-                                    name,
-                                    type: name && name.toLowerCase().includes('valor') ? 'value' : 'text'
-                                }));
-                                i++;
-                                // Linhas até linha vazia ou fim
-                                while (i < aoa.length && aoa[i].length && aoa[i][0] !== 'Poupança' && aoa[i][0] !== 'Reserva de Emergência') {
-                                    despesas.rows.push(aoa[i]);
-                                    i++;
-                                }
-                            } else if (row[0] === 'Poupança') {
-                                savingsValue = parseFloat(row[1]) || 0;
-                                i++;
-                            } else if (row[0] === 'Reserva de Emergência') {
-                                emergencyValue = parseFloat(row[1]) || 0;
-                                i++;
-                            } else {
-                                i++;
-                            }
-                        }
-
-                        // Salva no localStorage
-                        if (year && month) {
-                            localStorage.setItem(`tableData_${year}_${month}`, JSON.stringify(receitas));
-                            localStorage.setItem(`tableDataExpenses_${year}_${month}`, JSON.stringify(despesas));
-                            localStorage.setItem(`savingsValue_${year}_${month}`, savingsValue);
-                            localStorage.setItem(`emergencyValue_${year}_${month}`, emergencyValue);
-                        }
-                    });
-
-                    // Recarrega dados do mês atual
                     // ...existing code...
+                    // Após importar, recarrega dados do mês atual
+                    updateMonthLabel();
                     loadTableData();
                     loadTableDataExpenses();
                     loadSavingsValue();
-                    loadEmergencyValue();
+                    loadNextMonthValue && loadNextMonthValue();
+                    updateSumResultSavingsTotal();
                     document.getElementById('finalResult').textContent = '0';
                 } catch {
                     alert('Erro ao importar arquivo Excel.');
                 }
             };
-            reader.readAsArrayBuffer(file);
-        } else {
-            alert('Por favor, selecione um arquivo .xlsx exportado pelo sistema.');
+            // ...existing code...
         }
-        event.target.value = '';
+        // ...existing code...
     });
 
-    // --- FIM DAS ALTERAÇÕES DE PAGINAÇÃO POR MÊS ---
+    // ...existing code...
 
-    // Carrega dados do mês atual ao iniciar
-    loadTableData();
-    loadTableDataExpenses();
-    loadSavingsValue();
-
-    // --- NAVEGAÇÃO ENTRE MESES ---
-    prevBtn.addEventListener('click', () => {
-        if (currentMonth === 0) {
-            currentMonth = 11;
-            currentYear--;
-        } else {
-            currentMonth--;
-        }
-        updateMonthLabel();
+    // Garanta que updateSumResultSavingsTotal é chamada ao navegar entre meses
+    function loadAllMonthData() {
         loadTableData();
         loadTableDataExpenses();
         loadSavingsValue();
+        loadNextMonthValue();
+        updateSumResultSavingsTotal();
         document.getElementById('finalResult').textContent = '0';
-    });
-
-    nextBtn.addEventListener('click', () => {
-        if (currentMonth === 11) {
-            currentMonth = 0;
-            currentYear;
-        } else {
-            currentMonth++;
-        }
-        updateMonthLabel();
-        loadTableData();
-        loadTableDataExpenses();
-        loadSavingsValue();
-        document.getElementById('finalResult').textContent = '0';
-    });
-
-    // Atualiza label e carrega dados do mês inicial
-    updateMonthLabel();
-
-    // ...restante do código permanece igual...
+    }
 
     // --- Próximo Mês ---
     function getStorageKeyNextMonth(month = null, year = null) {
@@ -1436,10 +1285,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateFinalResult() {
-        const receitas = parseFloat(document.getElementById('sumResult').textContent.replace(/[^\d\.,-]/g, '').replace(',', '.')) || 0;
-        const despesas = parseFloat(document.getElementById('sumResultExpenses').textContent.replace(/[^\d\.,-]/g, '').replace(',', '.')) || 0;
-        const poupancaMesAtual = parseFloat(document.getElementById('sumResultSavings').textContent.replace(/[^\d\.,-]/g, '').replace(',', '.')) || 0;
-        const emergenciaMesAtual = parseFloat(document.getElementById('sumResultEmergency').textContent.replace(/[^\d\.,-]/g, '').replace(',', '.')) || 0;
+        const receitas = parseCurrencyText(document.getElementById('sumResult').textContent);
+        const despesas = parseCurrencyText(document.getElementById('sumResultExpenses').textContent);
+        const poupancaMesAtual = parseCurrencyText(document.getElementById('sumResultSavings').textContent);
+        const emergenciaMesAtual = parseCurrencyText(document.getElementById('sumResultEmergency').textContent);
         const nextMonthVal = parseFloat(nextMonthInput.value) || 0;
         const resultadoFinal = receitas - despesas - poupancaMesAtual - emergenciaMesAtual - nextMonthVal;
         document.getElementById('finalResult').textContent = formatCurrency(resultadoFinal);
@@ -1454,6 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTableDataExpenses();
         loadSavingsValue();
         loadNextMonthValue();
+        updateSumResultSavingsTotal();
         document.getElementById('finalResult').textContent = '0';
     }
 
@@ -1463,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentMonth = 11;
             currentYear--;
         } else {
-            currentMonth;
+            currentMonth--;
         }
         updateMonthLabel();
         loadAllMonthData();
@@ -1474,7 +1324,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentMonth = 0;
             currentYear++;
         } else {
-            currentMonth;
+            currentMonth++;
         }
         updateMonthLabel();
         loadAllMonthData();
